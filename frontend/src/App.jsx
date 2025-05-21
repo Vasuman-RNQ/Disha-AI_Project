@@ -1,4 +1,5 @@
 // src/App.jsx
+const api = import.meta.env.VITE_API_URL;
 import { useState, useEffect } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import axios from 'axios';
