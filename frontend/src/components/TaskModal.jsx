@@ -1,4 +1,3 @@
-// import React, { useState } from "react";
 import React, { useState } from "react";
 import axios from "axios";
 
@@ -9,29 +8,25 @@ const TaskModal = ({ onClose, fetchTasks }) => {
   const [description, setDescription] = useState("");
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent page reload
-
+    e.preventDefault();
     try {
-      // Send POST request to backend
       const response = await axios.post(`${api}/tasks`, {
-        title: title,
-        description: description,
-        status: "todo", // Default status for new tasks
+        title,
+        description,
+        status: "todo",
       });
-
-      // Log success (optional)
       console.log("Task saved:", response.data);
 
-      // Close modal and refresh task list
-      onClose();
-      fetchTasks();
+      // Safely call callbacks if provided
+      if (typeof fetchTasks === "function") fetchTasks();
+      if (typeof onClose === "function") onClose();
 
-      // Clear form fields
+      // Optionally clear form fields
       setTitle("");
       setDescription("");
     } catch (error) {
       console.error("Failed to save task:", error);
-      alert("Failed to save task. Check the console for details.");
+      alert("Failed to save task. See console for details.");
     }
   };
 
@@ -51,9 +46,7 @@ const TaskModal = ({ onClose, fetchTasks }) => {
           onChange={(e) => setDescription(e.target.value)}
         />
         <button type="submit">Save</button>
-        <button type="button" onClick={onClose}>
-          Cancel
-        </button>
+        <button type="button" onClick={onClose}>Cancel</button>
       </form>
     </div>
   );
