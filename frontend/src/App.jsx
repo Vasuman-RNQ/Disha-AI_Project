@@ -1,129 +1,138 @@
-import React, { useState, useEffect } from "react";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import axios from "axios";
-import TaskModal from "./components/TaskModal";
+// App.jsx
+import { useState, useRef } from 'react';
+import TaskModal from './TaskModal';
 
-const api = import.meta.env.VITE_API_URL;
+const initialTasks = {
+  todo: [],
+  inProgress: [],
+  done: []
+};
 
-const COLUMNS = [
-  { id: "todo", title: "To Do", color: "bg-blue-100" },
-  { id: "inprogress", title: "In Progress", color: "bg-yellow-100" },
-  { id: "done", title: "Done", color: "bg-green-100" },
-];
-
-function App() {
-  const [tasks, setTasks] = useState([]);
+export default function App() {
+  const [tasks, setTasks] = useState(initialTasks);
   const [showModal, setShowModal] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
+  const dragItem = useRef(null);
+  const dragCategory = useRef(null);
 
-  // Fetch tasks from backend
-  const fetchTasks = async () => {
-    try {
-      const response = await axios.get(`${api}/tasks`);
-      setTasks(response.data);
-    } catch (error) {
-      console.error("Failed to fetch tasks:", error);
-    }
+  // CRUD Operations
+  const createTask = (task) => {
+    setTasks(prev => ({
+      ...prev,
+      todo: [...prev.todo, { ...task, id: Date.now() }]
+    }));
   };
 
-  // Handle drag-and-drop
-  const handleDragEnd = async (result) => {
-    if (!result.destination) return;
-
-    const taskId = result.draggableId;
-    const newStatus = result.destination.droppableId;
-
-    try {
-      // Optimistic UI update
-      const updatedTasks = tasks.map(task => 
-        task.id === taskId ? { ...task, status: newStatus } : task
-      );
-      setTasks(updatedTasks);
-
-      // Update backend
-      await axios.put(`${api}/tasks/${taskId}`, { status: newStatus });
-    } catch (error) {
-      console.error("Move failed:", error);
-      fetchTasks(); // Revert if API fails
-    }
+  const updateTask = (updatedTask) => {
+    setTasks(prev => {
+      const newState = { ...prev };
+      Object.keys(newState).forEach(category => {
+        newState[category] = newState[category].map(task => 
+          task.id === updatedTask.id ? updatedTask : task
+        );
+      });
+      return newState;
+    });
   };
 
-  // Open modal for editing
-  const handleEdit = (task) => {
-    setSelectedTask(task);
-    setShowModal(true);
+  const deleteTask = (taskId) => {
+    setTasks(prev => {
+      const newState = { ...prev };
+      Object.keys(newState).forEach(category => {
+        newState[category] = newState[category].filter(t => t.id !== taskId);
+      });
+      return newState;
+    });
   };
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
+  // Drag and Drop Handlers
+  const handleDragStart = (e, taskId, category) => {
+    dragItem.current = taskId;
+    dragCategory.current = category;
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetCategory) => {
+    e.preventDefault();
+    if (!dragItem.current || dragCategory.current === targetCategory) return;
+
+    setTasks(prev => {
+      const sourceCategory = dragCategory.current;
+      const task = prev[sourceCategory].find(t => t.id === dragItem.current);
+      
+      return {
+        ...prev,
+        [sourceCategory]: prev[sourceCategory].filter(t => t.id !== dragItem.current),
+        [targetCategory]: [...prev[targetCategory], task]
+      };
+    });
+
+    dragItem.current = null;
+    dragCategory.current = null;
+  };
 
   return (
-    <div className="p-4 min-h-screen bg-gray-50">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Task Board</h1>
-        <button
-          onClick={() => {
-            setSelectedTask(null);
-            setShowModal(true);
-          }}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-        >
-          + Add Task
-        </button>
-      </div>
+    <div className="app">
+      <header>
+        <h1>Task Board</h1>
+        <button onClick={() => setShowModal(true)}>Create Task</button>
+      </header>
 
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-4">
-          {COLUMNS.map((column) => (
-            <Droppable key={column.id} droppableId={column.id}>
-              {(provided) => (
+      <div className="board">
+        {Object.keys(tasks).map((category) => (
+          <div 
+            key={category}
+            className="column"
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, category)}
+          >
+            <h2>{category.replace(/([A-Z])/g, ' $1').toUpperCase()}</h2>
+            <div className="tasks">
+              {tasks[category].map((task) => (
                 <div
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  className={`${column.color} p-4 rounded-lg w-80 flex flex-col gap-2`}
+                  key={task.id}
+                  className="task"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, task.id, category)}
+                  onClick={() => {
+                    setEditingTask(task);
+                    setShowModal(true);
+                  }}
                 >
-                  <h2 className="text-xl font-semibold mb-4">{column.title}</h2>
-                  {tasks
-                    .filter((task) => task.status === column.id)
-                    .map((task, index) => (
-                      <Draggable key={task.id} draggableId={task.id} index={index}>
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className="bg-white p-4 rounded shadow-sm hover:shadow-md cursor-move"
-                            onClick={() => handleEdit(task)}
-                          >
-                            <h3 className="font-medium">{task.title}</h3>
-                            <p className="text-gray-600 text-sm mt-1">
-                              {task.description}
-                            </p>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                  {provided.placeholder}
+                  <h3>{task.title}</h3>
+                  <p>{task.description}</p>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteTask(task.id);
+                    }}
+                  >
+                    Delete
+                  </button>
                 </div>
-              )}
-            </Droppable>
-          ))}
-        </div>
-      </DragDropContext>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {showModal && (
         <TaskModal
-          task={selectedTask}
+          task={editingTask}
           onClose={() => {
             setShowModal(false);
-            setSelectedTask(null);
+            setEditingTask(null);
           }}
-          fetchTasks={fetchTasks}
+          onSubmit={(taskData) => {
+            editingTask ? updateTask({ ...editingTask, ...taskData }) : createTask(taskData);
+          }}
         />
       )}
     </div>
   );
 }
-
-export default App;
