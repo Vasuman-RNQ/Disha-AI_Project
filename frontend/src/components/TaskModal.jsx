@@ -9,45 +9,54 @@ const TaskModal = ({ onClose, fetchTasks }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!title.trim()) return alert("Title is required!");
+
     try {
-      const response = await axios.post(`${api}/tasks`, {
-        title,
-        description,
+      // Send task to backend
+      await axios.post(`${api}/tasks`, {
+        title: title.trim(),
+        description: description.trim(),
         status: "todo",
       });
-      console.log("Task saved:", response.data);
 
-      // Safely call callbacks if provided
+      // Refresh tasks and close modal
       if (typeof fetchTasks === "function") fetchTasks();
       if (typeof onClose === "function") onClose();
 
-      // Optionally clear form fields
+      // Clear form
       setTitle("");
       setDescription("");
     } catch (error) {
-      console.error("Failed to save task:", error);
-      alert("Failed to save task. See console for details.");
+      console.error("Save failed:", error);
+      alert("Failed to save task. Check console for details.");
     }
   };
 
   return (
-    <div className="modal">
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Task Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
-        <textarea
-          placeholder="Task Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <button type="submit">Save</button>
-        <button type="button" onClick={onClose}>Cancel</button>
-      </form>
+    <div className="modal-overlay">
+      <div className="modal">
+        <h2>Create New Task</h2>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Task Title *"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+          />
+          <textarea
+            placeholder="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <div className="modal-actions">
+            <button type="button" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit">Save Task</button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

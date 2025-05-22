@@ -18,27 +18,41 @@ function App() {
     }
   };
 
+  // Fetch tasks on initial load
   useEffect(() => {
     fetchTasks();
   }, []);
 
   return (
-    <div>
-      <h1>Task Board</h1>
-      <button onClick={() => setShowModal(true)}>Add Task</button>
+    <div className="app-container">
+      <div className="header">
+        <h1>Task Board</h1>
+        <button 
+          className="add-task-btn" 
+          onClick={() => setShowModal(true)}
+        >
+          + Add Task
+        </button>
+      </div>
+
+      {/* Task List */}
+      <div className="task-list">
+        {tasks.map((task) => (
+          <div key={task.id} className="task-card">
+            <h3>{task.title}</h3>
+            <p>{task.description}</p>
+            <span className={`status ${task.status}`}>{task.status}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Task Modal */}
       {showModal && (
         <TaskModal
           onClose={() => setShowModal(false)}
           fetchTasks={fetchTasks}
         />
       )}
-      <ul>
-        {tasks.map((task) => (
-          <li key={task.id}>
-            <strong>{task.title}</strong>: {task.description}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
