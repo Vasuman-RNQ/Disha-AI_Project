@@ -1,5 +1,4 @@
 // src/App.jsx
-import React, { useState } from "react";
 const api = import.meta.env.VITE_API_URL;
 import { useState, useEffect } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
